@@ -41,8 +41,7 @@ class Temperature(ABC):
     def get_temperature(self):
         return self.temperature
 
-
-
+    
 class Fahrenheit(Temperature):
 
     def __init__(self, temperature):
