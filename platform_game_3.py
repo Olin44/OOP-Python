@@ -24,6 +24,8 @@ class Player(pygame.sprite.Sprite):
         self.lifes = 3
         self.level = None
         self.direction_of_movement = 'right'
+        self.set_of_items = pygame.sprite.Group()
+        self.set_of_bullets = pygame.sprite.Group()
 
     def draw(self, surface):
         surface.blit(self.image, self.rect)
@@ -71,8 +73,8 @@ class Player(pygame.sprite.Sprite):
                 self.rect.left = o.rect.right
             if self.movement_x < 0:
                 self.rect.right = o.rect.left
-        print(self.movement_y)
-        print("-------------")
+        #print(self.movement_y)
+        #print("-------------")
 
         #animacja (co 4)
         if self.movement_x  > 0:
@@ -106,6 +108,13 @@ class Player(pygame.sprite.Sprite):
                 self.image = gm.STAND_L
             else:
                 self.image = gm.STAND_R
+        self.lift_up()
+
+    def lift_up(self):
+        for i in self.set_of_items:
+            if i.rect.colliderect(self.rect):
+                self.items.add(i.name)
+                self.set_of_items.remove(i)
 
     def get_event(self, event):
         if event.type == pygame.KEYDOWN:
@@ -123,6 +132,18 @@ class Player(pygame.sprite.Sprite):
                 self.stop()
                 self.image = gm.STAND_R
 
+
+
+    def shoot(self, event):
+        #print(event, self.items, self.items.__len__() )
+        if self.items.__len__() > 0:
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_a:
+                    print(event, self.items, self.items.__len__())
+                    if self.direction_of_movement == "right":
+                        self.set_of_bullets.add(Bullet(gm.BULLET_R, self.direction_of_movement))
+                    if self.direction_of_movement == "left":
+                        self.set_of_bullets.add(Bullet(gm.BULLET_R, self.direction_of_movement))
 
 
 class Platform(pygame.sprite.Sprite):
@@ -149,30 +170,87 @@ class Level():
         for s in self.set_of_platforms:
             s.update()
 
+        for b in player.set_of_bullets:
+            b.update()
+
+        for i in player.set_of_items:
+            i.update()
+        self._delete_bullets()
+
     def draw(self, surface):
         for s in self.set_of_platforms:
             s.draw(surface)
+
+        for b in player.set_of_bullets:
+            b.draw(surface)
+
+        for i in player.set_of_items:
+            i.draw(surface)
+
+    def _delete_bullets(self):
+        print(player.set_of_bullets)
+        for b in player.set_of_bullets:
+            for p in self.set_of_platforms:
+                if p.rect.colliderect(b):
+                    player.set_of_bullets.remove(b)
+            if gm.WIDTH < b.rect.x:
+                player.set_of_bullets.remove(b)
+
 
 
 class Level_1(Level):
     def __init__(self, player:Player):
         super().__init__(player)
 
-
-        list_platforms = [[420, 70, 750, 330],
-                          [980, 70, 0, gm.HEIGHT - 70],
+        list_platforms = [[420, 70, 750, 350],
+                          [980, 70, 0, gm.HEIGHT-70],
                           [560, 70, 0, 170],
-                          [140, 70, 1240, 50]]
+                          [140, 70, 1240, 600]]
 
         for w in list_platforms:
             self.set_of_platforms.add(Platform(gm.DARKRED, *w))
+        shotgun = Item(gm.SHOTGUN, 'shotgun')
+        shotgun.rect.x = 600
+        shotgun.rect.y = 600
+        player.set_of_items.add(shotgun)
+
+
+class Item(pygame.sprite.Sprite):
+    def __init__(self, image, name):
+        super().__init__()
+        self.image = image
+        self.rect = self.image.get_rect()
+        self.name = name
+
+    def draw(self, surface):
+        surface.blit(self.image, self.rect)
+
+
+class Bullet(pygame.sprite.Sprite):
+    def __init__(self, image, direction):
+        super().__init__()
+        self.image = image
+        self.direction_of_movement = direction
+        self.rect = self.image.get_rect()
+        self.rect.center = player.rect.center
+
+    def update(self):
+        if self.direction_of_movement == "right":
+            self.rect.x += 15
+        if self.direction_of_movement == "left":
+            self.rect.x -= 15
+
+    def draw(self, surface):
+        surface.blit(self.image, self.rect)
+
+
+
 
 # konkretyzacja obiektów
 player = Player(gm.STAND_R)
 player.rect.center = screen.get_rect().center
 current_level = Level_1(player)
 player.level = current_level
-
 
 # głowna pętla gry
 window_open = True
@@ -181,6 +259,7 @@ while window_open:
     # pętla zdarzeń
     for event in pygame.event.get():
         #print(event)
+        player.shoot(event)
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 window_open = False
